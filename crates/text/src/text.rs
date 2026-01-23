@@ -245,6 +245,18 @@ impl History {
                 self.undo_stack.pop();
                 None
             } else {
+                if let Some(entry) = self.undo_stack.pop() {
+                    // and full undos (TODO: make it configurable)
+                    for redo_entry in self.redo_stack.iter_mut() {
+                        redo_entry.last_edit_at = now;
+                        redo_entry.suppress_grouping = true;
+                    }
+
+                    self.undo_stack
+                        .extend(self.redo_stack.iter().rev().cloned());
+                    self.undo_stack.extend(self.redo_stack.iter().cloned());
+                    self.undo_stack.push(entry);
+                }
                 self.redo_stack.clear();
                 let entry = self.undo_stack.last_mut().unwrap();
                 entry.last_edit_at = now;

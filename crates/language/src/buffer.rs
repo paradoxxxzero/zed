@@ -2833,7 +2833,9 @@ impl Buffer {
                 }));
             }
         }
-
+        self.text.update_history_keep_redo(
+            language_settings(self.language().map(|l| l.name()), None, cx).history_undo,
+        );
         self.end_transaction(cx);
         self.send_operation(Operation::Buffer(edit_operation), true, cx);
         Some(edit_id)

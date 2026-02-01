@@ -276,6 +276,11 @@
   // The colors that are used for different indentation levels are defined in the theme (theme key: `accents`).
   // They can be customized by using theme overrides.
   "colorize_brackets": false,
+  // Whether to enable history undo feature.
+  //
+  // History undo allows to keep redo history when making changes after undoing.
+  // It keeps track of all the changes you make and allows you to revert to any previous state.
+  "history_undo": false,
   // When to show the scrollbar in the completion menu.
   // This setting can take four values:
   //

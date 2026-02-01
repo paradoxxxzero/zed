@@ -149,6 +149,7 @@ struct History {
     undo_stack: Vec<HistoryEntry>,
     redo_stack: Vec<HistoryEntry>,
     transaction_depth: usize,
+    keep_redo: bool,
     group_interval: Duration,
 }
 
@@ -193,6 +194,7 @@ impl History {
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             transaction_depth: 0,
+            keep_redo: true,
             // Don't group transactions in tests unless we opt in, because it's a footgun.
             #[cfg(any(test, feature = "test-support"))]
             group_interval: Duration::ZERO,
@@ -245,6 +247,19 @@ impl History {
                 self.undo_stack.pop();
                 None
             } else {
+                if self.keep_redo
+                    && let Some(entry) = self.undo_stack.pop()
+                {
+                    for redo_entry in self.redo_stack.iter_mut() {
+                        redo_entry.last_edit_at = now;
+                        redo_entry.suppress_grouping = true;
+                    }
+
+                    self.undo_stack
+                        .extend(self.redo_stack.iter().rev().cloned());
+                    self.undo_stack.extend(self.redo_stack.iter().cloned());
+                    self.undo_stack.push(entry);
+                }
                 self.redo_stack.clear();
                 let entry = self.undo_stack.last_mut().unwrap();
                 entry.last_edit_at = now;
@@ -815,6 +830,10 @@ impl Buffer {
 
     pub fn transaction_group_interval(&self) -> Duration {
         self.history.group_interval
+    }
+
+    pub fn update_history_keep_redo(&mut self, keep_redo: bool) {
+        self.history.keep_redo = keep_redo;
     }
 
     pub fn edit<R, I, S, T>(&mut self, edits: R) -> Operation

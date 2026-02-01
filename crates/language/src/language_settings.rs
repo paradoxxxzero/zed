@@ -172,6 +172,8 @@ pub struct LanguageSettings {
     ///
     /// Default: `true`
     pub word_diff_enabled: bool,
+    /// Whether to use undo history.
+    pub history_undo: bool,
     /// Whether to use tree-sitter bracket queries to detect and colorize the brackets in the editor.
     pub colorize_brackets: bool,
 }
@@ -640,6 +642,7 @@ impl settings::Settings for AllLanguageSettings {
                 },
                 show_completions_on_input: settings.show_completions_on_input.unwrap(),
                 show_completion_documentation: settings.show_completion_documentation.unwrap(),
+                history_undo: settings.history_undo.unwrap(),
                 colorize_brackets: settings.colorize_brackets.unwrap(),
                 completions: CompletionSettings {
                     words: completions.words.unwrap(),

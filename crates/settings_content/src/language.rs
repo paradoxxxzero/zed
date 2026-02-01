@@ -553,6 +553,13 @@ pub struct LanguageSettingsContent {
     ///
     /// Default: true
     pub word_diff_enabled: Option<bool>,
+    /// Whether to enable history undo feature.
+    ///
+    /// History undo allows to keep redo history when making changes after undoing.
+    /// It keeps track of all the changes you make and allows you to revert to any previous state.
+    ///
+    /// Default: false
+    pub history_undo: Option<bool>,
     /// Whether to use tree-sitter bracket queries to detect and colorize the brackets in the editor.
     ///
     /// Default: false

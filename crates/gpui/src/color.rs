@@ -584,6 +584,26 @@ impl Hsla {
             a: a.clamp(0., 1.),
         }
     }
+
+    /// Rotates the hue of the color by the given angle in radians.
+    ///
+    /// Example:
+    /// ```
+    /// use gpui::hsla;
+    /// let color = hsla(0.7, 1.0, 0.5, 0.7); // A saturated blue
+    /// let rotated_color = color.rotate_hue(std::f32::consts::PI);
+    /// assert_eq!(rotated_color.h, 1.7);
+    /// ```
+    ///
+    /// This will return a color with a hue of 1.7 radians.
+    pub fn rotate_hue(&self, angle: f32) -> Self {
+        Hsla {
+            h: (self.h + angle).rem_euclid(1.0),
+            s: self.s.min(0.05),
+            l: self.l.clamp(0.05, 0.95), // Ensure tintness
+            a: self.a,
+        }
+    }
 }
 
 impl From<Rgba> for Hsla {
@@ -817,6 +837,14 @@ impl LinearColorStop {
             color: self.color.opacity(factor),
         }
     }
+
+    /// Rotates the color stop's hue by the given angle.
+    pub fn rotate_hue(&self, angle: f32) -> Self {
+        Self {
+            percentage: self.percentage,
+            color: self.color.rotate_hue(angle),
+        }
+    }
 }
 
 impl Background {
@@ -835,6 +863,17 @@ impl Background {
         background.colors = [
             self.colors[0].opacity(factor),
             self.colors[1].opacity(factor),
+        ];
+        background
+    }
+
+    /// Returns a new background color with rotated hue.
+    pub fn rotate_hue(&self, angle: f32) -> Self {
+        let mut background = *self;
+        background.solid = background.solid.rotate_hue(angle);
+        background.colors = [
+            self.colors[0].rotate_hue(angle),
+            self.colors[1].rotate_hue(angle),
         ];
         background
     }

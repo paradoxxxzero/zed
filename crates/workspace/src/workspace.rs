@@ -111,7 +111,7 @@ use std::{
     cmp,
     collections::VecDeque,
     env,
-    hash::Hash,
+    hash::{DefaultHasher, Hash, Hasher},
     path::{Path, PathBuf},
     process::ExitStatus,
     rc::Rc,
@@ -1339,6 +1339,7 @@ impl Workspace {
 
                 &project::Event::WorktreeRemoved(id) | &project::Event::WorktreeAdded(id) => {
                     this.update_window_title(window, cx);
+                    this.update_current_hash(window, cx);
                     if this
                         .project()
                         .read(cx)
@@ -1351,6 +1352,7 @@ impl Workspace {
                 }
                 project::Event::WorktreeUpdatedEntries(..) => {
                     this.update_window_title(window, cx);
+                    this.update_current_hash(window, cx);
                     this.serialize_workspace(window, cx);
                 }
 
@@ -5098,6 +5100,22 @@ impl Workspace {
         }
 
         self.update_window_title(window, cx);
+    }
+
+    fn update_current_hash(&mut self, window: &mut Window, cx: &mut App) {
+        let project = self.project().read(cx);
+        let abs_path = project
+            .visible_worktrees(cx)
+            .map(|wt| wt.read(cx).abs_path().to_string_lossy().into_owned())
+            .collect::<Vec<_>>()
+            .join(",");
+
+        let mut s = DefaultHasher::new();
+        abs_path.hash(&mut s);
+        let tint = ((s.finish() as f64) / u64::MAX as f64) as f32;
+        if window.update_tint(tint) {
+            GlobalTheme::reload_theme(cx);
+        }
     }
 
     fn update_window_title(&mut self, window: &mut Window, cx: &mut App) {

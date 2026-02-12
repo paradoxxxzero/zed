@@ -512,6 +512,7 @@ fn init_renderers(cx: &mut App) {
         .add_basic_renderer::<NonZero<usize>>(render_number_field)
         .add_basic_renderer::<NonZeroU32>(render_number_field)
         .add_basic_renderer::<settings::CodeFade>(render_number_field)
+        .add_basic_renderer::<settings::ProjectTint>(render_number_field)
         .add_basic_renderer::<settings::DelayMs>(render_number_field)
         .add_basic_renderer::<settings::FontWeightContent>(render_number_field)
         .add_basic_renderer::<settings::CenteredPaddingSettings>(render_number_field)

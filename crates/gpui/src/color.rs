@@ -585,22 +585,34 @@ impl Hsla {
         }
     }
 
-    /// Rotates the hue of the color by the given angle in radians.
+    /// Adjust the color by rotating the hue by the given color hue shift, and
+    /// scaling the saturation and lightness by the given saturation and lightness
+    /// shifts, respectively.
     ///
     /// Example:
     /// ```
     /// use gpui::hsla;
-    /// let color = hsla(0.7, 1.0, 0.5, 0.7); // A saturated blue
-    /// let rotated_color = color.rotate_hue(std::f32::consts::PI);
-    /// assert_eq!(rotated_color.h, 1.7);
+    /// let color = hsla(0.7, 0.8, 0.5, 0.7); // A saturated blue
+    /// let rotated_color = color.tint(hsla(0.5, 0.5, 1., 0.)); // Rotate hue by 0.3
+    /// assert_eq!(rotated_color, hsla(0.2, 0.5, 1.0, 0.7));
     /// ```
     ///
-    /// This will return a color with a hue of 1.7 radians.
-    pub fn rotate_hue(&self, angle: f32) -> Self {
+    /// This will return a color with a hue of 0.2 and lightness of 0.4
+    pub fn tint(&self, shift: Hsla) -> Self {
         Hsla {
-            h: (self.h + angle).rem_euclid(1.0),
-            s: self.s.min(0.05),
-            l: self.l.clamp(0.05, 0.95), // Ensure tintness
+            h: (self.h + shift.h).rem_euclid(1.0),
+            s: (if shift.s > 0.5 {
+                2.0 * (1.0 - self.s) * shift.s + (2.0 * self.s - 1.0)
+            } else {
+                2.0 * self.s * shift.s
+            })
+            .clamp(0., 1.),
+            l: (if shift.l > 0.5 {
+                2.0 * (1.0 - self.l) * shift.l + (2.0 * self.l - 1.0)
+            } else {
+                2.0 * self.l * shift.l
+            })
+            .clamp(0., 1.),
             a: self.a,
         }
     }
@@ -839,10 +851,10 @@ impl LinearColorStop {
     }
 
     /// Rotates the color stop's hue by the given angle.
-    pub fn rotate_hue(&self, angle: f32) -> Self {
+    pub fn tint(&self, shift: Hsla) -> Self {
         Self {
             percentage: self.percentage,
-            color: self.color.rotate_hue(angle),
+            color: self.color.tint(shift),
         }
     }
 }
@@ -868,13 +880,10 @@ impl Background {
     }
 
     /// Returns a new background color with rotated hue.
-    pub fn rotate_hue(&self, angle: f32) -> Self {
+    pub fn tint(&self, shift: Hsla) -> Self {
         let mut background = *self;
-        background.solid = background.solid.rotate_hue(angle);
-        background.colors = [
-            self.colors[0].rotate_hue(angle),
-            self.colors[1].rotate_hue(angle),
-        ];
+        background.solid = background.solid.tint(shift);
+        background.colors = [self.colors[0].tint(shift), self.colors[1].tint(shift)];
         background
     }
 

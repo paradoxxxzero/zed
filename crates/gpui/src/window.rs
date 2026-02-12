@@ -933,7 +933,7 @@ pub struct Window {
     pub(crate) bounds_observers: SubscriberSet<(), AnyObserver>,
     appearance: WindowAppearance,
     pub(crate) appearance_observers: SubscriberSet<(), AnyObserver>,
-    tint: f32,
+    tint: Hsla,
     active: Rc<Cell<bool>>,
     hovered: Rc<Cell<bool>>,
     pub(crate) needs_present: Rc<Cell<bool>>,
@@ -1417,7 +1417,12 @@ impl Window {
             capslock,
             scale_factor,
             bounds_observers: SubscriberSet::new(),
-            tint: 0.0,
+            tint: Hsla {
+                h: 0.,
+                s: 0.5,
+                l: 0.5,
+                a: 1.,
+            },
             appearance,
             appearance_observers: SubscriberSet::new(),
             active,
@@ -1450,7 +1455,13 @@ impl Window {
     /// Updates the tint of the window.
     ///
     /// Returns `true` if the tint was updated, `false` otherwise.
-    pub fn update_tint(&mut self, tint: f32) -> bool {
+    pub fn update_tint(&mut self, hue: f32, saturation: f32, lightness: f32) -> bool {
+        let tint = Hsla {
+            h: hue,
+            s: saturation,
+            l: lightness,
+            a: 1.,
+        };
         if self.tint != tint {
             self.tint = tint;
             true
@@ -3099,7 +3110,7 @@ impl Window {
                 bounds: shadow_bounds.scale(scale_factor),
                 content_mask: content_mask.scale(scale_factor),
                 corner_radii: corner_radii.scale(scale_factor),
-                color: shadow.color.rotate_hue(self.tint).opacity(opacity),
+                color: shadow.color.tint(self.tint).opacity(opacity),
             });
         }
     }
@@ -3123,8 +3134,8 @@ impl Window {
             order: 0,
             bounds: quad.bounds.scale(scale_factor),
             content_mask: content_mask.scale(scale_factor),
-            background: quad.background.rotate_hue(self.tint).opacity(opacity),
-            border_color: quad.border_color.rotate_hue(self.tint).opacity(opacity),
+            background: quad.background.tint(self.tint).opacity(opacity),
+            border_color: quad.border_color.tint(self.tint).opacity(opacity),
             corner_radii: quad.corner_radii.scale(scale_factor),
             border_widths: quad.border_widths.scale(scale_factor),
             border_style: quad.border_style,
@@ -3142,7 +3153,7 @@ impl Window {
         let opacity = self.element_opacity();
         path.content_mask = content_mask;
         let color: Background = color.into();
-        path.color = color.rotate_hue(self.tint).opacity(opacity);
+        path.color = color.tint(self.tint).opacity(opacity);
         self.next_frame
             .scene
             .insert_primitive(path.scale(scale_factor));
@@ -3180,7 +3191,7 @@ impl Window {
             color: style
                 .color
                 .unwrap_or_default()
-                .rotate_hue(self.tint)
+                .tint(self.tint)
                 .opacity(element_opacity),
             thickness: style.thickness.scale(scale_factor),
             wavy: if style.wavy { 1 } else { 0 },
@@ -3216,7 +3227,7 @@ impl Window {
             color: style
                 .color
                 .unwrap_or_default()
-                .rotate_hue(self.tint)
+                .tint(self.tint)
                 .opacity(opacity),
             wavy: 0,
         });

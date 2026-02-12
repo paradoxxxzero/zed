@@ -1,4 +1,4 @@
-use std::num::NonZeroUsize;
+use std::{fmt::Display, num::NonZeroUsize};
 
 use collections::HashMap;
 use schemars::JsonSchema;
@@ -7,8 +7,36 @@ use settings_macros::{MergeFrom, with_fallible_options};
 
 use crate::{
     CenteredPaddingSettings, DelayMs, DockPosition, DockSide, InactiveOpacity,
-    ScrollbarSettingsContent, ShowIndentGuides, serialize_optional_f32_with_two_decimal_places,
+    ScrollbarSettingsContent, ShowIndentGuides, serialize_f32_with_two_decimal_places,
+    serialize_optional_f32_with_two_decimal_places,
 };
+
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+    MergeFrom,
+    PartialEq,
+    PartialOrd,
+    derive_more::FromStr,
+)]
+#[serde(transparent)]
+pub struct ProjectTint(#[serde(serialize_with = "serialize_f32_with_two_decimal_places")] pub f32);
+
+impl Display for ProjectTint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:.2}", self.0)
+    }
+}
+
+impl From<f32> for ProjectTint {
+    fn from(x: f32) -> Self {
+        Self(x)
+    }
+}
 
 #[with_fallible_options]
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize, JsonSchema, MergeFrom)]

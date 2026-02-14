@@ -380,7 +380,7 @@ fn general_page() -> SettingsPage {
 }
 
 fn appearance_page() -> SettingsPage {
-    fn theme_section() -> [SettingsPageItem; 3] {
+    fn theme_section() -> [SettingsPageItem; 4] {
         [
             SettingsPageItem::SectionHeader("Theme"),
             SettingsPageItem::DynamicItem(DynamicItem {
@@ -720,6 +720,68 @@ fn appearance_page() -> SettingsPage {
                         ],
                     }
                 }).collect(),
+            }),
+            SettingsPageItem::DynamicItem(DynamicItem {
+                            discriminant: SettingItem {
+                title: "Tint windows per project",
+                description: "Whether to tint the background of projects windows.",
+                field: Box::new(SettingField {
+                    json_path: Some("tint_window_by_project"),
+                    pick: |settings_content| settings_content.project.tint_window_by_project.as_ref(),
+                    write: |settings_content, value| {
+                        settings_content.project.tint_window_by_project = value;
+                    },
+                }),
+                metadata: None,
+                files: USER | PROJECT,
+                            },
+                pick_discriminant: |settings_content| {
+                let enabled = settings_content.project.tint_window_by_project.unwrap_or(false);
+                Some(if enabled { 1 } else { 0 })
+              }, fields: vec![
+                vec![],
+vec![
+            SettingItem {
+                title: "Project tint hue",
+                description: "How much hue the current project should be tinted. (0.0-1.0, leave at 0.0 to automatically select a hue based on the project's name)",
+                field: Box::new(SettingField {
+                    json_path: Some("project_tint_hue"),
+                    pick: |settings_content| settings_content.project.project_tint_hue.as_ref(),
+                    write: |settings_content, value| {
+                        settings_content.project.project_tint_hue = value;
+                    },
+                }),
+                metadata: None,
+                files: PROJECT,
+            },
+            SettingItem {
+                title: "Project tint saturation shift",
+                description: "How much saturation to shift to the current project tint. 0.5 means no change, 0.0 means completely desaturated, and 1.0 means fully saturated.",
+                field: Box::new(SettingField {
+                    json_path: Some("project_tint_saturation"),
+                    pick: |settings_content| settings_content.project.project_tint_saturation.as_ref(),
+                    write: |settings_content, value| {
+                        settings_content.project.project_tint_saturation = value;
+                    },
+                }),
+                metadata: None,
+                files: PROJECT,
+            },
+            SettingItem {
+                title: "Project tint lightness shift",
+                description: "How much lightness to shift to the current project tint. 0.5 means no change, 0.0 means completely dark, and 1.0 means completely light.",
+                field: Box::new(SettingField {
+                    json_path: Some("project_tint_lightness"),
+                    pick: |settings_content| settings_content.project.project_tint_lightness.as_ref(),
+                    write: |settings_content, value| {
+                        settings_content.project.project_tint_lightness = value;
+                    },
+                }),
+                metadata: None,
+                files: PROJECT,
+            },
+],
+],
             }),
         ]
     }

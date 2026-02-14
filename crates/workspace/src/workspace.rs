@@ -111,7 +111,7 @@ use std::{
     cmp,
     collections::VecDeque,
     env,
-    hash::Hash,
+    hash::{DefaultHasher, Hash, Hasher},
     path::{Path, PathBuf},
     process::ExitStatus,
     rc::Rc,
@@ -1289,6 +1289,11 @@ impl Workspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
+        let mut current_tint_window_by_project = false;
+        let mut current_project_tint_hue = 1.;
+        let mut current_project_tint_saturation = 0.5;
+        let mut current_project_tint_lightness = 0.5;
+
         if let Some(trusted_worktrees) = TrustedWorktrees::try_get_global(cx) {
             cx.subscribe(&trusted_worktrees, |_, worktrees_store, e, cx| {
                 if let TrustedWorktreesEvent::Trusted(..) = e {
@@ -1327,10 +1332,32 @@ impl Workspace {
             .detach();
         }
 
+        cx.observe_global_in::<SettingsStore>(window, move |this, window, cx| {
+            let settings = this.resolve_project_settings(cx);
+            let tint_window_by_project = settings.tint_window_by_project;
+            let project_tint_hue = settings.project_tint_hue;
+            let project_tint_saturation = settings.project_tint_saturation;
+            let project_tint_lightness = settings.project_tint_lightness;
+            if tint_window_by_project != current_tint_window_by_project
+                || project_tint_hue != current_project_tint_hue
+                || project_tint_saturation != current_project_tint_saturation
+                || project_tint_lightness != current_project_tint_lightness
+            {
+                this.update_current_hash(window, cx);
+            }
+
+            current_tint_window_by_project = tint_window_by_project;
+            current_project_tint_hue = project_tint_hue;
+            current_project_tint_saturation = project_tint_saturation;
+            current_project_tint_lightness = project_tint_lightness;
+        })
+        .detach();
+
         cx.subscribe_in(&project, window, move |this, _, event, window, cx| {
             match event {
                 project::Event::RemoteIdChanged(_) => {
                     this.update_window_title(window, cx);
+                    this.update_current_hash(window, cx);
                 }
 
                 project::Event::CollaboratorLeft(peer_id) => {
@@ -1339,6 +1366,7 @@ impl Workspace {
 
                 &project::Event::WorktreeRemoved(id) | &project::Event::WorktreeAdded(id) => {
                     this.update_window_title(window, cx);
+                    this.update_current_hash(window, cx);
                     if this
                         .project()
                         .read(cx)
@@ -1351,6 +1379,7 @@ impl Workspace {
                 }
                 project::Event::WorktreeUpdatedEntries(..) => {
                     this.update_window_title(window, cx);
+                    this.update_current_hash(window, cx);
                     this.serialize_workspace(window, cx);
                 }
 
@@ -1626,6 +1655,7 @@ impl Workspace {
 
         cx.defer_in(window, move |this, window, cx| {
             this.update_window_title(window, cx);
+            this.update_current_hash(window, cx);
             this.show_initial_notifications(cx);
         });
 
@@ -1940,6 +1970,20 @@ impl Workspace {
                 .log_err();
             Ok((window, opened_items))
         })
+    }
+
+    fn resolve_project_settings<'a>(&self, cx: &'a App) -> &'a ProjectSettings {
+        let project = self.project().read(cx);
+
+        let location =
+            project
+                .visible_worktrees(cx)
+                .next()
+                .map(|worktree| settings::SettingsLocation {
+                    worktree_id: worktree.read(cx).id(),
+                    path: RelPath::empty(),
+                });
+        ProjectSettings::get(location, cx)
     }
 
     pub fn weak_handle(&self) -> WeakEntity<Self> {
@@ -5098,6 +5142,44 @@ impl Workspace {
         }
 
         self.update_window_title(window, cx);
+        self.update_current_hash(window, cx);
+    }
+
+    fn update_current_hash(&mut self, window: &mut Window, cx: &mut App) {
+        let settings = self.resolve_project_settings(cx);
+        let tint = match settings {
+            ProjectSettings {
+                tint_window_by_project: false,
+                ..
+            } => 0.0,
+            ProjectSettings {
+                project_tint_hue, ..
+            } if *project_tint_hue < 0.999 => *project_tint_hue,
+            _ => {
+                let project = self.project().read(cx);
+                let abs_path = project
+                    .visible_worktrees(cx)
+                    .map(|wt| wt.read(cx).abs_path().to_string_lossy().into_owned())
+                    .collect::<Vec<_>>()
+                    .join(",");
+                let mut s = DefaultHasher::new();
+                abs_path.hash(&mut s);
+                ((s.finish() as f64) / u64::MAX as f64) as f32
+            }
+        };
+        let saturation = if settings.tint_window_by_project {
+            settings.project_tint_saturation
+        } else {
+            0.5
+        };
+        let lightness = if settings.tint_window_by_project {
+            settings.project_tint_lightness
+        } else {
+            0.5
+        };
+        if window.update_tint(tint, saturation, lightness) {
+            GlobalTheme::reload_theme(cx);
+        }
     }
 
     fn update_window_title(&mut self, window: &mut Window, cx: &mut App) {

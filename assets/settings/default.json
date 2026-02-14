@@ -76,6 +76,14 @@
   "agent_buffer_font_size": 12,
   // How much to fade out unused code.
   "unnecessary_code_fade": 0.3,
+  // Whether to tint the background of project windows with the project's accent color.
+  "tint_window_by_project": false,
+  // How much to tint the background of project windows, 0.0 means automatically generated tints based on the project name.
+  "project_tint_hue": 1.0,
+  // Shift the saturation of the project tint, 0.5 means no change, 0.0 means completely unsaturated (white), 1.0 means full saturation.
+  "project_tint_saturation": 0.5,
+  // Shift the lightness of the project tint, 0.5 means no change, 0.0 means completely dark (black), 1.0 means completely light (white).
+  "project_tint_lightness": 0.5,
   // Active pane styling settings.
   "active_pane_modifiers": {
     // Inset border size of the active pane, in pixels.

@@ -510,6 +510,10 @@ impl VsCodeSettings {
             slash_commands: None,
             git_hosting_providers: None,
             disable_ai: None,
+            tint_window_by_project: None,
+            project_tint_hue: None,
+            project_tint_saturation: None,
+            project_tint_lightness: None,
         }
     }
 

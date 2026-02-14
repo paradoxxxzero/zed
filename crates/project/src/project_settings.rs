@@ -78,6 +78,16 @@ pub struct ProjectSettings {
 
     /// Configuration for session-related features
     pub session: SessionSettings,
+
+    /// Whether to tint the window background based on the active project
+    pub tint_window_by_project: bool,
+    /// Force a tint hue for the project window background, by default
+    /// this is generated based on the project name
+    pub project_tint_hue: f32,
+    /// Change the project tint saturation
+    pub project_tint_saturation: f32,
+    /// Change the project tint lightness
+    pub project_tint_lightness: f32,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -718,6 +728,10 @@ impl Settings for ProjectSettings {
                 restore_unsaved_buffers: content.session.unwrap().restore_unsaved_buffers.unwrap(),
                 trust_all_worktrees: content.session.unwrap().trust_all_worktrees.unwrap(),
             },
+            tint_window_by_project: project.tint_window_by_project.unwrap_or(false),
+            project_tint_hue: project.project_tint_hue.unwrap().0.clamp(0.0, 1.0),
+            project_tint_saturation: project.project_tint_saturation.unwrap().0.clamp(0.0, 1.0),
+            project_tint_lightness: project.project_tint_lightness.unwrap().0.clamp(0.0, 1.0),
         }
     }
 }

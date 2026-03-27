@@ -48,6 +48,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Write as _,
     future::Future,
+    hash::{DefaultHasher, Hash, Hasher},
     iter::{self, Iterator, Peekable},
     mem,
     num::NonZeroU32,
@@ -510,7 +511,7 @@ struct IndentSuggestion {
 struct BufferChunkHighlights<'a> {
     captures: SyntaxMapCaptures<'a>,
     next_capture: Option<SyntaxMapCapture<'a>>,
-    stack: Vec<(usize, HighlightId)>,
+    stack: Vec<(usize, HighlightId, Option<f32>)>,
     highlight_maps: Vec<HighlightMap>,
 }
 
@@ -538,6 +539,7 @@ pub struct Chunk<'a> {
     pub text: &'a str,
     /// The syntax highlighting style of the chunk.
     pub syntax_highlight_id: Option<HighlightId>,
+    pub hash: Option<f32>,
     /// The highlight style that has been applied to this chunk in
     /// the editor.
     pub highlight_style: Option<HighlightStyle>,
@@ -5382,7 +5384,7 @@ impl<'a> BufferChunks<'a> {
                 // Reuse existing highlights stack, as the new range is a subrange of the old one.
                 highlights
                     .stack
-                    .retain(|(end_offset, _)| *end_offset > range.start);
+                    .retain(|(end_offset, _, _)| *end_offset > range.start);
                 if let Some(capture) = &highlights.next_capture
                     && range.start >= capture.node.start_byte()
                 {
@@ -5391,7 +5393,14 @@ impl<'a> BufferChunks<'a> {
                         && let Some(capture_id) =
                             highlights.highlight_maps[capture.grammar_index].get(capture.index)
                     {
-                        highlights.stack.push((next_capture_end, capture_id));
+                        let mut hash = None;
+                        if let Some(buffer) = self.buffer_snapshot {
+                            let text = buffer
+                                .text_for_range(capture.node.byte_range().clone())
+                                .collect::<String>();
+                            hash = Some(hash_text(&text));
+                        }
+                        highlights.stack.push((next_capture_end, capture_id, hash));
                     }
                     highlights.next_capture.take();
                 }
@@ -5499,6 +5508,13 @@ impl<'a> BufferChunks<'a> {
     }
 }
 
+pub fn hash_text(text: &str) -> f32 {
+    let mut s = DefaultHasher::new();
+    text.hash(&mut s);
+    let hash = s.finish();
+    ((hash as f64) / (u64::MAX as f64)) as f32
+}
+
 impl<'a> Iterator for BufferChunks<'a> {
     type Item = Chunk<'a>;
 
@@ -5507,7 +5523,7 @@ impl<'a> Iterator for BufferChunks<'a> {
         let mut next_diagnostic_endpoint = usize::MAX;
 
         if let Some(highlights) = self.highlights.as_mut() {
-            while let Some((parent_capture_end, _)) = highlights.stack.last() {
+            while let Some((parent_capture_end, _, _)) = highlights.stack.last() {
                 if *parent_capture_end <= self.range.start {
                     highlights.stack.pop();
                 } else {
@@ -5520,6 +5536,25 @@ impl<'a> Iterator for BufferChunks<'a> {
             }
 
             while let Some(capture) = highlights.next_capture.as_ref() {
+                let mut hash = None;
+                if let Some(buffer) = self.buffer_snapshot {
+                    let grammar = highlights.captures.grammars()[capture.grammar_index];
+                    if let Some(highlights_config) = &grammar.highlights_config {
+                        let capture_name =
+                            highlights_config.query.capture_names()[capture.index as usize];
+
+                        if capture_name
+                            .split('.')
+                            .any(|part| ["parameter", "property", "variable"].contains(&part))
+                        {
+                            let text = buffer
+                                .text_for_range(capture.node.byte_range().clone())
+                                .collect::<String>();
+                            hash = Some(hash_text(&text));
+                        }
+                    }
+                }
+
                 if self.range.start < capture.node.start_byte() {
                     next_capture_start = capture.node.start_byte();
                     break;
@@ -5529,7 +5564,7 @@ impl<'a> Iterator for BufferChunks<'a> {
                     if let Some(highlight_id) = highlight_id {
                         highlights
                             .stack
-                            .push((capture.node.end_byte(), highlight_id));
+                            .push((capture.node.end_byte(), highlight_id, hash));
                     }
                     highlights.next_capture = highlights.captures.next();
                 }
@@ -5563,11 +5598,14 @@ impl<'a> Iterator for BufferChunks<'a> {
                 .min(next_capture_start)
                 .min(next_diagnostic_endpoint);
             let mut highlight_id = None;
+            let mut hash = None;
             if let Some(highlights) = self.highlights.as_ref()
-                && let Some((parent_capture_end, parent_highlight_id)) = highlights.stack.last()
+                && let Some((parent_capture_end, parent_highlight_id, parent_hash)) =
+                    highlights.stack.last()
             {
                 chunk_end = chunk_end.min(*parent_capture_end);
                 highlight_id = Some(*parent_highlight_id);
+                hash = *parent_hash;
             }
             let bit_start = chunk_start - self.chunks.offset();
             let bit_end = chunk_end - self.chunks.offset();
@@ -5589,6 +5627,7 @@ impl<'a> Iterator for BufferChunks<'a> {
             Some(Chunk {
                 text: slice,
                 syntax_highlight_id: highlight_id,
+                hash,
                 underline: self.underline,
                 diagnostic_severity: self.current_diagnostic_severity(),
                 is_unnecessary: self.current_code_is_unnecessary(),

@@ -1867,6 +1867,32 @@ impl DisplaySnapshot {
                     .syntax_highlight_id
                     .and_then(|id| editor_style.syntax.get(id).cloned());
 
+                let hash_style = chunk
+                    .hash
+                    .map(|hash| {
+                        editor_style
+                            .syntax
+                            .style_for_name("attribute")
+                            .map(|attribute_style| {
+                                syntax_highlight_style.map(|syntax_highlight_style| HighlightStyle {
+                                    color: Some(gpui::Hsla {
+                                        h: hash,
+                                        s: attribute_style.color.map(|color| color.s).unwrap_or(0.9),
+                                        l: attribute_style.color.map(|color| color.l).unwrap_or(
+                                            // if cx.theme().appearance == "dark" {
+                                            0.8, // } else {
+                                                //     0.3
+                                                // },
+                                        ),
+                                        a: 1.0,
+                                    }),
+                                    ..syntax_highlight_style
+                                })
+                            })
+                            .flatten()
+                    })
+                    .flatten();
+
                 let chunk_highlight = chunk.highlight_style.map(|chunk_highlight| {
                     HighlightStyle {
                         // For color inlays, blend the color with the editor background
@@ -1924,6 +1950,7 @@ impl DisplaySnapshot {
 
                 let style = [
                     syntax_highlight_style,
+                    hash_style,
                     chunk_highlight,
                     diagnostic_highlight,
                 ]

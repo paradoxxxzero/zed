@@ -1403,6 +1403,8 @@ pub struct Chunk<'a> {
     pub text: &'a str,
     /// The syntax highlighting style of the chunk.
     pub syntax_highlight_id: Option<HighlightId>,
+    /// The hash of the chunk's text.
+    pub hash: Option<f32>,
     /// The highlight style that has been applied to this chunk in
     /// the editor.
     pub highlight_style: Option<HighlightStyle>,
@@ -1604,6 +1606,7 @@ impl<'a> Iterator for FoldChunks<'a> {
                 chars: chunk.chars,
                 newlines: chunk.newlines,
                 syntax_highlight_id: chunk.syntax_highlight_id,
+                hash: chunk.hash,
                 highlight_style: chunk.highlight_style,
                 diagnostic_severity: chunk.diagnostic_severity,
                 is_unnecessary: chunk.is_unnecessary,

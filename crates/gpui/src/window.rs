@@ -1161,6 +1161,7 @@ pub struct Window {
     appearance: WindowAppearance,
     pub(crate) appearance_observers: SubscriberSet<(), AnyObserver>,
     pub(crate) button_layout_observers: SubscriberSet<(), AnyObserver>,
+    tint: Hsla,
     active: Rc<Cell<bool>>,
     hovered: Rc<Cell<bool>>,
     pub(crate) needs_present: Rc<Cell<bool>>,
@@ -1844,6 +1845,12 @@ impl Window {
             capslock,
             scale_factor,
             bounds_observers: SubscriberSet::new(),
+            tint: Hsla {
+                h: 0.,
+                s: 0.5,
+                l: 0.5,
+                a: 1.,
+            },
             appearance,
             appearance_observers: SubscriberSet::new(),
             button_layout_observers: SubscriberSet::new(),
@@ -1883,6 +1890,24 @@ impl Window {
         value: AnyWindowFocusListener,
     ) -> (Subscription, impl FnOnce() + use<>) {
         self.focus_listeners.insert((), value)
+    }
+
+    /// Updates the tint of the window.
+    ///
+    /// Returns `true` if the tint was updated, `false` otherwise.
+    pub fn update_tint(&mut self, hue: f32, saturation: f32, lightness: f32) -> bool {
+        let tint = Hsla {
+            h: hue,
+            s: saturation,
+            l: lightness,
+            a: 1.,
+        };
+        if self.tint != tint {
+            self.tint = tint;
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -3974,7 +3999,7 @@ impl Window {
                 bounds: self.cover_bounds(shadow_bounds),
                 content_mask,
                 corner_radii: corner_radii.scale(scale_factor),
-                color: shadow.color.opacity(opacity),
+                color: shadow.color.tint(self.tint).opacity(opacity),
                 element_bounds,
                 element_corner_radii,
                 inset: 0,
@@ -4019,7 +4044,7 @@ impl Window {
                 bounds: self.cover_bounds(hole),
                 content_mask,
                 corner_radii: hole_corner_radii.scale(scale_factor),
-                color: shadow.color.opacity(opacity),
+                color: shadow.color.tint(self.tint).opacity(opacity),
                 element_bounds,
                 element_corner_radii,
                 inset: 1,
@@ -4086,8 +4111,8 @@ impl Window {
             order: 0,
             bounds: snapped_bounds,
             content_mask: self.snapped_content_mask(),
-            background: quad.background.opacity(opacity),
-            border_color: quad.border_color.opacity(opacity),
+            background: quad.background.tint(self.tint).opacity(opacity),
+            border_color: quad.border_color.tint(self.tint).opacity(opacity),
             corner_radii: quad.corner_radii.scale(self.scale_factor()),
             border_widths: snapped_border_widths,
             border_style: quad.border_style,
@@ -4155,7 +4180,7 @@ impl Window {
         let opacity = self.element_opacity();
         path.content_mask = content_mask;
         let color: Background = color.into();
-        path.color = color.opacity(opacity);
+        path.color = color.tint(self.tint).opacity(opacity);
         self.next_frame
             .scene
             .insert_primitive(path.scale(scale_factor));
@@ -4190,7 +4215,11 @@ impl Window {
             pad: 0,
             bounds,
             content_mask: self.snapped_content_mask(),
-            color: style.color.unwrap_or_default().opacity(element_opacity),
+            color: style
+                .color
+                .unwrap_or_default()
+                .tint(self.tint)
+                .opacity(element_opacity),
             thickness,
             wavy: style.wavy.into(),
         });
@@ -4221,7 +4250,11 @@ impl Window {
             bounds,
             content_mask: self.snapped_content_mask(),
             thickness: self.snap_stroke(style.thickness),
-            color: style.color.unwrap_or_default().opacity(opacity),
+            color: style
+                .color
+                .unwrap_or_default()
+                .tint(self.tint)
+                .opacity(opacity),
             wavy: false.into(),
         });
     }
@@ -4293,7 +4326,7 @@ impl Window {
                     pad: 0,
                     bounds,
                     content_mask,
-                    color: color.opacity(element_opacity),
+                    color: color.tint(self.tint).opacity(element_opacity),
                     tile,
                     transformation: TransformationMatrix::unit(),
                 });
@@ -4303,7 +4336,7 @@ impl Window {
                     pad: 0,
                     bounds,
                     content_mask,
-                    color: color.opacity(element_opacity),
+                    color: color.tint(self.tint).opacity(element_opacity),
                     tile,
                     transformation: TransformationMatrix::unit(),
                 });
@@ -4450,7 +4483,7 @@ impl Window {
             pad: 0,
             bounds: final_bounds,
             content_mask,
-            color: color.opacity(element_opacity),
+            color: color.tint(self.tint).opacity(element_opacity),
             tile,
             transformation,
         });

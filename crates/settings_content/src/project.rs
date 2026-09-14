@@ -14,7 +14,7 @@ use util::serde::default_true;
 
 use crate::{
     AllLanguageSettingsContent, DelayMs, ExtendingVec, ParseStatus, ProjectTerminalSettingsContent,
-    RootUserSettings, SaturatingBool, SplicingVec, fallible_options,
+    ProjectTint, RootUserSettings, SaturatingBool, SplicingVec, fallible_options,
 };
 
 #[with_fallible_options]
@@ -85,12 +85,26 @@ pub struct ProjectSettingsContent {
     ///
     /// Default: false
     pub disable_ai: Option<SaturatingBool>,
+    /// Whether to tint the background of project windows with the project's accent color.
+    pub tint_window_by_project: Option<bool>,
+
+    /// How much to tint the background of project windows
+    /// Setting it to 1.0 let zed generates automatically a color based on the project name.
+    #[schemars(range(min = 0.0, max = 1.0))]
+    pub project_tint_hue: Option<ProjectTint>,
+    /// How much to shift the saturation of project windows tint
+    #[schemars(range(min = 0.0, max = 1.0))]
+    pub project_tint_saturation: Option<ProjectTint>,
+    /// How much to shift the lightness of project windows tint
+    #[schemars(range(min = 0.0, max = 1.0))]
+    pub project_tint_lightness: Option<ProjectTint>,
 }
 
 crate::fallible_options::flattened_deserialize!(ProjectSettingsContent {
     sections: { all_languages, worktree },
     options: {
         terminal, context_server_timeout, load_direnv, git_hosting_providers, disable_ai,
+        tint_window_by_project, project_tint_hue, project_tint_saturation, project_tint_lightness,
     },
     defaults: { lsp, dap, context_servers },
 });
